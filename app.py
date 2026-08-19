@@ -77,7 +77,7 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
         placeholder = st.empty()
         
         if document_context:
-            full_prompt = f"너는 제공된 문서의 내용만을 기반으로 답변하는 친절하고 전문적인 AI야. 다음 [참고 문서]를 꼼꼼히 확인하고 질문에 답해줘. 문서에 없는 내용은 모른다고 대답해야 해.\n\n[참고 문서]\n{document_context}\n\n[질문]\n{prompt}"
+            full_prompt = f"너는 제공된 문서의 내용을 바탕으로 아주 상세하고 깊이 있게 설명해주는 전문 AI야. 사용자의 질문에 대해 [참고 문서]의 내용을 최대한 구체적이고 풍부하게 풀어서 상세히 답변해줘. 중요한 내용은 빠짐없이 모두 포함하고, 사람이 이해하기 쉽도록 충분한 길이를 할애해서 친절하게 설명해. 단, 문서에 없는 사실을 지어내면 안 돼.\n\n[참고 문서]\n{document_context}\n\n[질문]\n{prompt}"
         else:
             full_prompt = prompt
 
