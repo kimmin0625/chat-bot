@@ -10,13 +10,13 @@ import time
 MY_API_KEY = "AQ.Ab8RN6IUHc55e8IHtqbT9THp-d9ldt2M4A9oU9o3gI5ubrXlIQ"
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 나만의 맞춤형 지식 챗봇")
-st.write("이 챗봇은 필요한 문서를 이미 모두 학습한 상태입니다. 바로 질문해 보세요!")
+st.title("🤖 SM그룹 실행예산 편성지침!")
+st.write("궁금하신 산출기준 등 편하게 물어보세요!")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-3.6-flash')
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
