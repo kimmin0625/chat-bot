@@ -20,8 +20,8 @@ st.write("이 챗봇은 필요한 문서를 이미 모두 학습한 상태입니
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        # 💡 선생님이 가장 만족하셨던 기본 모델 설정 (유연한 표 생성 가능)
-       model = genai.GenerativeModel('gemini-3.6-flash')
+        # 💡 선생님 말씀대로 제미나이 3.6 플래시 버전으로 복구했습니다! ('models/' 제거)
+        model = genai.GenerativeModel('gemini-3.6-flash')
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
@@ -87,7 +87,7 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
         else:
             full_prompt = prompt
 
-        # 🚨 과속 단속(429 에러)이 뜰 때 뻗지 않도록 방패만 추가했습니다.
+        # 🚨 과속 단속(429 에러) 방패
         max_retries = 3 
         for attempt in range(max_retries):
             try:
