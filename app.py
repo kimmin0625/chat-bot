@@ -56,7 +56,7 @@ def load_backend_documents():
 document_context, loaded_files = load_backend_documents()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 외웠습니다! 이전 대화 흐름도 기억하고 있으니 편하게 질문해 주세요."}]
+    st.session_state.messages = [{"role": "assistant", "content": "무료버전이라 동시에 여러명 질문시 답변을 못하니 천천히 기다려 답변해주세요!! ."}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
