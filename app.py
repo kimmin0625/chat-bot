@@ -14,13 +14,13 @@ except:
     st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
 
 st.set_page_config(page_title="무결점 문서 검색기", layout="wide")
-st.title("🤖 SM그룹 실행예산 편성지침 요약챗봇!")
+st.title("🤖 SM그룹 실행예산 편성지침 요약챗봇")
 st.write("문서에 없는 내용은 대답하지 않으며, 원본 데이터를 100% 그대로 출력합니다.")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        # 창의성 0.0 으로 왜곡 원천 차단
+        # 💡 AI의 창의성을 0%로 박탈 (왜곡 원천 차단)
         model = genai.GenerativeModel('models/gemini-3.6-flash', generation_config={"temperature": 0.0})
     except Exception as e:
         model = None
@@ -85,7 +85,7 @@ if prompt := st.chat_input("문서 내용 검색..."):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         
-       if document_context:
+        if document_context:
             full_prompt = f"""너는 제공된 [참고 문서]의 데이터를 바탕으로 답변하는 '정밀 문서 분석기'야. 
 없는 사실을 지어내는 것(환각)은 엄격히 금지하지만, 문서에 있는 데이터를 사용자가 보기 편하게 표나 개조식으로 '정리 및 재구성'하는 것은 적극적으로 수행해.
 
@@ -107,7 +107,6 @@ if prompt := st.chat_input("문서 내용 검색..."):
             full_prompt = prompt
 
         max_retries = 3 
-        import time
         for attempt in range(max_retries):
             try:
                 response = model.generate_content(full_prompt, stream=True)
