@@ -92,16 +92,33 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
         else:
             full_prompt = prompt
 
-        try:
-            response = model.generate_content(full_prompt, stream=True)
-            full_text = ""
-            for chunk in response:
-                for char in chunk.text:
-                    full_text += char
-                    placeholder.markdown(full_text + "▌")
-                    time.sleep(0.01) 
-            
-            placeholder.markdown(full_text)
-            st.session_state.messages.append({"role": "assistant", "content": full_text})
-        except Exception as e:
-            placeholder.error(f"오류가 발생했습니다: {e}")
+       import time # 맨 위에 import time이 없다면 에러가 날 수 있으니 여기서 한 번 더 부릅니다.
+        
+        max_retries = 3 # 최대 3번까지 재시도
+        
+        for attempt in range(max_retries):
+            try:
+                response = model.generate_content(full_prompt, stream=True)
+                full_text = ""
+                for chunk in response:
+                    for char in chunk.text:
+                        full_text += char
+                        placeholder.markdown(full_text + "▌")
+                        time.sleep(0.01) 
+                
+                placeholder.markdown(full_text)
+                st.session_state.messages.append({"role": "assistant", "content": full_text})
+                break # 성공하면 반복문(재시도) 탈출!
+                
+            except Exception as e:
+                if "429" in str(e):
+                    # 429 과속 단속 에러인 경우
+                    if attempt < max_retries - 1:
+                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다... (기다려주세요)")
+                        time.sleep(20 * (attempt + 1)) # 20초 대기 후 다시 시도
+                    else:
+                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
+                else:
+                    # 429가 아닌 다른 진짜 에러인 경우
+                    placeholder.error(f"오류가 발생했습니다: {e}")
+                    break
