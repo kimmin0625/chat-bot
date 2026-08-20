@@ -92,9 +92,8 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
         else:
             full_prompt = prompt
 
-       import time # 맨 위에 import time이 없다면 에러가 날 수 있으니 여기서 한 번 더 부릅니다.
-        
-        max_retries = 3 # 최대 3번까지 재시도
+        import time 
+        max_retries = 3 
         
         for attempt in range(max_retries):
             try:
@@ -108,7 +107,18 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
                 
                 placeholder.markdown(full_text)
                 st.session_state.messages.append({"role": "assistant", "content": full_text})
-                break # 성공하면 반복문(재시도) 탈출!
+                break 
+                
+            except Exception as e:
+                if "429" in str(e):
+                    if attempt < max_retries - 1:
+                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다... (기다려주세요)")
+                        time.sleep(20 * (attempt + 1)) 
+                    else:
+                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
+                else:
+                    placeholder.error(f"오류가 발생했습니다: {e}")
+                    break
                 
             except Exception as e:
                 if "429" in str(e):
