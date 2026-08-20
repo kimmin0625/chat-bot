@@ -6,22 +6,16 @@ import docx
 import os
 import time
 
-# 🚨 Streamlit 비밀 금고에서 API 키 불러오기
-try:
-    MY_API_KEY = st.secrets["MY_API_KEY"]
-except:
-    MY_API_KEY = None
-    st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
+# 🚨 API 키 (새로 발급받은 키를 여기에 넣으세요)
+MY_API_KEY = st.secrets["MY_API_KEY"]
 
-st.set_page_config(page_title="무결점 문서 검색기", layout="wide")
-st.title("🤖 SM그룹 실행예산 편성지침 요약 챗봇")
-st.write("문서에 없는 내용은 대답하지 않으며, 원본 데이터를 100% 그대로 출력합니다.")
+st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
+st.title("🤖 나만의 맞춤형 지식 챗봇 (천재 모드 + 기억력 탑재)")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        # 💡 핵심 1: temperature=0.0 을 줘서 AI의 창의성을 0%로 박탈합니다. (왜곡 원천 차단)
-        model = genai.GenerativeModel('models/gemini-3.6-flash', generation_config={"temperature": 0.0})
+        model = genai.GenerativeModel('models/gemini-3.6-flash')
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
@@ -63,19 +57,20 @@ def load_backend_documents():
 document_context, loaded_files = load_backend_documents()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 인식했습니다. 검색할 내용을 입력해 주세요. (문서에 없는 내용은 답변하지 않습니다)"}]
+    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 외웠습니다! 이전 대화 흐름도 기억하고 있으니 편하게 질문해 주세요."}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("문서 내용 검색..."):
+if prompt := st.chat_input("챗봇에게 질문하세요..."):
     if model is None:
         st.stop()
         
+    # 💡 핵심: AI가 이전 문맥을 이해하도록 최근 4번의 대화 기록을 모아줍니다.
     chat_history = ""
     for msg in st.session_state.messages[-4:]:
-        role_name = "질문" if msg["role"] == "user" else "검색결과"
+        role_name = "질문" if msg["role"] == "user" else "AI 답변"
         chat_history += f"{role_name}: {msg['content']}\n"
         
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -86,17 +81,15 @@ if prompt := st.chat_input("문서 내용 검색..."):
         placeholder = st.empty()
         
         if document_context:
-            # 💡 핵심 2: 오직 문서 복사/붙여넣기만 하도록 족쇄를 채운 프롬프트
-            full_prompt = f"""너는 인공지능이 아니라, 오직 [참고 문서]의 텍스트를 그대로 찾아주는 '정밀 문서 검색기'야. 
-너의 창의성이나 일반 지식은 0%로 차단하고, 오직 문서에 적힌 내용만 100% 그대로 출력해.
+            full_prompt = f"""너는 제공된 문서의 내용과 [이전 대화 기록]을 바탕으로 '핵심 기준'을 정확하게 짚어주는 실무 전문 AI야. 
 
 [절대 지켜야 할 출력 규칙]
-1. 왜곡 및 창작 절대 금지: 문서에 없는 내용은 단 한 글자도 지어내지 마라.
-2. 원본 유지: 산출 기준, 적용 개소, 치수, 수량 등은 원본 텍스트의 토씨 하나 틀리지 않고 그대로 옮겨 적어라.
-3. 표(Table) 요청 시: 사용자가 표로 정리해 달라고 하면, 문서의 원본 데이터 수치를 정확히 가져와 마크다운 표 형식으로 깔끔하게 그려라.
-4. 정보 부재 시: 질문에 대한 답이 [참고 문서]에 없다면, 억지로 대답하지 말고 "제공된 문서에서 해당 내용을 찾을 수 없습니다."라고만 출력해라.
+1. 간결한 개조식 요약: 장황한 설명은 생략하고, 글머리 기호(-, *)로 깔끔하게 정리해.
+2. 조건 누락 절대 금지: 산출 기준, 적용 개소(예: 코어개소 적용), 예외 조건은 단 하나도 생략하지 마라.
+3. 🧹 깔끔한 텍스트: `<br>`, `TEXT` 같은 태그 쓰지 말고 단위는 ㎡, ㎥ 등으로 정확히 표기해.
+4. 문맥 유지: [이전 대화 기록]을 참고해서 사용자가 이어서 질문하면 자연스럽게 연결해서 답변해.
 
-[이전 검색 기록]
+[이전 대화 기록]
 {chat_history}
 
 [참고 문서]
@@ -126,10 +119,10 @@ if prompt := st.chat_input("문서 내용 검색..."):
             except Exception as e:
                 if "429" in str(e):
                     if attempt < max_retries - 1:
-                        placeholder.warning(f"⏳ 서버 혼잡. {20 * (attempt + 1)}초 후 재시도합니다...")
+                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
                         time.sleep(20 * (attempt + 1)) 
                     else:
-                        placeholder.error("요청이 너무 많습니다. 잠시 후 다시 질문해 주세요.")
+                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
                 else:
                     placeholder.error(f"오류가 발생했습니다: {e}")
                     break
