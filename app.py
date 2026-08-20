@@ -5,66 +5,79 @@ import PyPDF2
 import docx
 import os
 import time
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 
-# 🚨 Streamlit 비밀 금고에서 API 키 불러오기 (보안 유지)
-try:
-    MY_API_KEY = st.secrets["MY_API_KEY"]
-except:
-    MY_API_KEY = None
-    st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
+# API 키 설정
+MY_API_KEY = "AQ.Ab8RN6IUHc55e8IHtqbT9THp-d9ldt2M4A9oU9o3gI5ubrXlIQ"
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 SM그룹 실행예산 편성지침")
-st.write("이 챗봇은 필요한 문서를 이미 모두 학습한 상태입니다. 바로 질문해 보세요!")
+st.title("🤖 나만의 초고속 지식 챗봇 (RAG 엔진 탑재)")
+st.write("토큰 낭비 없이 핵심만 쏙쏙 뽑아 답변하는 스마트 엔진이 적용되었습니다!")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        # 💡 선생님 말씀대로 제미나이 3.6 플래시 버전으로 복구했습니다! ('models/' 제거)
-        model = genai.GenerativeModel('gemini-3.6-flash')
+        model = genai.GenerativeModel('models/gemini-3.6-flash') # 사용하시던 모델 버전 유지
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
 else:
     model = None
 
-@st.cache_data 
-def load_backend_documents():
-    text = ""
+# 💡 핵심: 문서를 읽고, 잘게 조각내서 도서관(FAISS)에 저장하는 함수
+@st.cache_resource
+def build_vector_db():
+    raw_text = ""
     valid_extensions = ['.txt', '.pdf', '.docx', '.csv', '.xlsx']
-    
     files = [f for f in os.listdir('.') if os.path.isfile(f) and os.path.splitext(f)[1].lower() in valid_extensions]
     
+    if not files:
+        return None
+        
     for file_name in files:
         try:
             if file_name.endswith('.txt'):
                 with open(file_name, 'rb') as f:
-                    text += f.read().decode('utf-8') + "\n"
+                    raw_text += f.read().decode('utf-8') + "\n"
             elif file_name.endswith('.pdf'):
                 with open(file_name, 'rb') as f:
                     reader = PyPDF2.PdfReader(f)
                     for page in reader.pages:
-                        text += page.extract_text() + "\n"
+                        raw_text += page.extract_text() + "\n"
             elif file_name.endswith('.docx'):
                 doc = docx.Document(file_name)
                 for para in doc.paragraphs:
-                    text += para.text + "\n"
+                    raw_text += para.text + "\n"
             elif file_name.endswith('.csv'):
                 df = pd.read_csv(file_name)
-                text += df.to_string() + "\n"
+                raw_text += df.to_string() + "\n"
             elif file_name.endswith('.xlsx'):
                 df = pd.read_excel(file_name)
-                text += df.to_string() + "\n"
-            text += f"\n--- [문서: {file_name}] ---\n\n"
-        except Exception as e:
+                raw_text += df.to_string() + "\n"
+            raw_text += f"\n--- [출처: {file_name}] ---\n\n"
+        except Exception:
             pass
-            
-    return text, files
 
-document_context, loaded_files = load_backend_documents()
+    if not raw_text.strip():
+        return None
+
+    # 1. 텍스트를 500글자 단위로 잘게 쪼갭니다.
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    chunks = text_splitter.split_text(raw_text)
+    
+    # 2. 한국어에 특화된 무료 임베딩 모델로 조각들을 저장합니다.
+    embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
+    vector_db = FAISS.from_texts(chunks, embeddings)
+    
+    return vector_db
+
+with st.spinner("📚 문서를 조각내어 AI 도서관을 구축하고 있습니다... (최초 1회 약 1~2분 소요)"):
+    vector_db = build_vector_db()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "무엇을 도와드릴까요? 학습된 지식을 바탕으로 빠르게 답변해 드립니다."}]
+    st.session_state.messages = [{"role": "assistant", "content": "도서관 구축 완료! 문서 내용에 대해 편하게 물어보세요."}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -81,13 +94,28 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         
-        # 💡 선생님이 작성하셨던 가장 심플하고 훌륭한 프롬프트!
-        if document_context:
-            full_prompt = f"너는 제공된 문서의 내용만을 기반으로 답변하는 친절하고 전문적인 AI야. 다음 [참고 문서]를 꼼꼼히 확인하고 질문에 답해줘. 문서에 없는 내용은 모른다고 대답해야 해.\n\n[참고 문서]\n{document_context}\n\n[질문]\n{prompt}"
+        context = ""
+        # 💡 질문이 들어오면 도서관에서 가장 관련 있는 딱 3조각만 꺼내옵니다! (토큰 폭풍 절약)
+        if vector_db:
+            docs = vector_db.similarity_search(prompt, k=3)
+            context = "\n\n".join([f"[관련 조각 {i+1}]\n{d.page_content}" for i, d in enumerate(docs)])
+        
+        if context:
+            full_prompt = f"""너는 제공된 문서의 내용을 바탕으로 '핵심 기준'만 빠르고 정확하게 짚어주는 실무 전문 AI야. 
+
+[절대 지켜야 할 출력 규칙]
+1. 💡 간결한 개조식 요약: 서론이나 장황한 줄글 설명은 생략하고, 핵심 내용만 글머리 기호(-, *)로 정리해.
+2. 🚨 조건 누락 절대 금지: 산출 기준, 적용 개소, 예외 조건 등은 단 하나도 생략하지 마라.
+3. 🧹 깔끔한 텍스트: HTML 태그 쓰지 말고 단위는 ㎡, ㎥ 등으로 정확히 표기해.
+
+[참고 문서 조각 (이 내용만 보고 답변해!)]
+{context}
+
+[질문]
+{prompt}"""
         else:
             full_prompt = prompt
 
-        # 🚨 과속 단속(429 에러) 방패
         max_retries = 3 
         for attempt in range(max_retries):
             try:
@@ -106,10 +134,10 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
             except Exception as e:
                 if "429" in str(e):
                     if attempt < max_retries - 1:
-                        placeholder.warning(f"⏳ 구글 서버 혼잡. {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
+                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
                         time.sleep(20 * (attempt + 1)) 
                     else:
-                        placeholder.error("요청이 너무 많습니다. 잠시 후 다시 질문해 주세요.")
+                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
                 else:
                     placeholder.error(f"오류가 발생했습니다: {e}")
                     break
