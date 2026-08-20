@@ -10,11 +10,11 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 # API 키 설정
-MY_API_KEY = "AQ.Ab8RN6IUHc55e8IHtqbT9THp-d9ldt2M4A9oU9o3gI5ubrXlIQ"
+MY_API_KEY = "AQ.Ab8RN6LdxBZE3F1irHRJM2kE67Nei4HuYautmedHzu1yv8Ikmg"
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 나만의 초고속 지식 챗봇 (RAG 엔진 탑재)")
-st.write("토큰 낭비 없이 핵심만 쏙쏙 뽑아 답변하는 스마트 엔진이 적용되었습니다!")
+st.title("🤖 SM그룹 실행편성 지침 요약 챗")
+st.write("궁금하신 편성지침 편하게 질문해주세요!")
 
 if MY_API_KEY:
     try:
