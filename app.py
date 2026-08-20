@@ -21,7 +21,7 @@ if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
         # 💡 선생님이 가장 만족하셨던 기본 모델 설정 (유연한 표 생성 가능)
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+       model = genai.GenerativeModel('gemini-3.6-flash')
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
