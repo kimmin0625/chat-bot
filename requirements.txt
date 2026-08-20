@@ -1,6 +1,11 @@
+Plaintext
 streamlit
 google-generativeai
 pandas
 PyPDF2
 python-docx
 openpyxl
+langchain
+langchain-community
+sentence-transformers
+faiss-cpu
