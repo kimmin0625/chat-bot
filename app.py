@@ -6,16 +6,22 @@ import docx
 import os
 import time
 
-# 🚨 API 키 (새로 발급받은 키를 여기에 넣으세요)
-MY_API_KEY = st.secrets["MY_API_KEY"]
+# 🚨 Streamlit 비밀 금고에서 API 키 불러오기
+try:
+    MY_API_KEY = st.secrets["MY_API_KEY"]
+except:
+    MY_API_KEY = None
+    st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
 
-st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 SM그룹 실행예산 편성지침 요약 챗봇")
+st.set_page_config(page_title="무결점 문서 검색기", layout="wide")
+st.title("🤖 무결점 실무 문서 검색기 (왜곡 차단)")
+st.write("문서에 없는 내용은 대답하지 않으며, 원본 데이터를 100% 그대로 출력합니다.")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        model = genai.GenerativeModel('models/gemini-3.6-flash')
+        # 창의성 0.0 으로 왜곡 원천 차단
+        model = genai.GenerativeModel('models/gemini-3.6-flash', generation_config={"temperature": 0.0})
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
@@ -57,20 +63,19 @@ def load_backend_documents():
 document_context, loaded_files = load_backend_documents()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 외웠습니다! 이전 대화 흐름도 기억하고 있으니 편하게 질문해 주세요."}]
+    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 인식했습니다. 검색할 내용을 입력해 주세요. (문서에 없는 내용은 답변하지 않습니다)"}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("챗봇에게 질문하세요..."):
+if prompt := st.chat_input("문서 내용 검색..."):
     if model is None:
         st.stop()
         
-    # 💡 핵심: AI가 이전 문맥을 이해하도록 최근 4번의 대화 기록을 모아줍니다.
     chat_history = ""
     for msg in st.session_state.messages[-4:]:
-        role_name = "질문" if msg["role"] == "user" else "AI 답변"
+        role_name = "질문" if msg["role"] == "user" else "검색결과"
         chat_history += f"{role_name}: {msg['content']}\n"
         
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -79,7 +84,8 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
 
     with st.chat_message("assistant"):
         placeholder = st.empty()
-       if document_context:
+        
+        if document_context:
             full_prompt = f"""너는 오직 [참고 문서]에 작성된 데이터만 추출하여 보여주는 '초정밀 데이터 추출 엔진'이다.
 너의 사전 지식, 추론, 요약하려는 습성은 완벽하게 배제하고, 기계처럼 아래의 [절대 규칙]을 엄수하라.
 
@@ -99,6 +105,8 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
 
 [사용자 질문]
 {prompt}"""
+        else:
+            full_prompt = prompt
 
         max_retries = 3 
         import time
@@ -119,10 +127,10 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
             except Exception as e:
                 if "429" in str(e):
                     if attempt < max_retries - 1:
-                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
+                        placeholder.warning(f"⏳ 서버 혼잡. {20 * (attempt + 1)}초 후 재시도합니다...")
                         time.sleep(20 * (attempt + 1)) 
                     else:
-                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
+                        placeholder.error("요청이 너무 많습니다. 잠시 후 다시 질문해 주세요.")
                 else:
                     placeholder.error(f"오류가 발생했습니다: {e}")
                     break
