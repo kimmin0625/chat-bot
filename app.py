@@ -14,7 +14,7 @@ except:
     st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
 
 st.set_page_config(page_title="무결점 문서 검색기", layout="wide")
-st.title("🤖 무결점 실무 문서 검색기 (왜곡 차단)")
+st.title("🤖 SM그룹 실행예산편성지침 요약 챗봇")
 st.write("문서에 없는 내용은 대답하지 않으며, 원본 데이터를 100% 그대로 출력합니다.")
 
 if MY_API_KEY:
