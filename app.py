@@ -5,79 +5,59 @@ import PyPDF2
 import docx
 import os
 import time
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
 
-# API 키 설정
+# 🚨 API 키 (새로 발급받은 키를 여기에 넣으세요)
 MY_API_KEY = "AQ.Ab8RN6LdxBZE3F1irHRJM2kE67Nei4HuYautmedHzu1yv8Ikmg"
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 SM그룹 실행편성 지침 요약 챗")
-st.write("궁금하신 편성지침 편하게 질문해주세요!")
+st.title("🤖 SM그룹 실행예산 편성지침 요약 챗봇!")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        model = genai.GenerativeModel('models/gemini-3.6-flash') # 사용하시던 모델 버전 유지
+        model = genai.GenerativeModel('models/gemini-3.6-flash')
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
 else:
     model = None
 
-# 💡 핵심: 문서를 읽고, 잘게 조각내서 도서관(FAISS)에 저장하는 함수
-@st.cache_resource
-def build_vector_db():
-    raw_text = ""
+@st.cache_data 
+def load_backend_documents():
+    text = ""
     valid_extensions = ['.txt', '.pdf', '.docx', '.csv', '.xlsx']
     files = [f for f in os.listdir('.') if os.path.isfile(f) and os.path.splitext(f)[1].lower() in valid_extensions]
     
-    if not files:
-        return None
-        
     for file_name in files:
         try:
             if file_name.endswith('.txt'):
                 with open(file_name, 'rb') as f:
-                    raw_text += f.read().decode('utf-8') + "\n"
+                    text += f.read().decode('utf-8') + "\n"
             elif file_name.endswith('.pdf'):
                 with open(file_name, 'rb') as f:
                     reader = PyPDF2.PdfReader(f)
                     for page in reader.pages:
-                        raw_text += page.extract_text() + "\n"
+                        text += page.extract_text() + "\n"
             elif file_name.endswith('.docx'):
                 doc = docx.Document(file_name)
                 for para in doc.paragraphs:
-                    raw_text += para.text + "\n"
+                    text += para.text + "\n"
             elif file_name.endswith('.csv'):
                 df = pd.read_csv(file_name)
-                raw_text += df.to_string() + "\n"
+                text += df.to_string() + "\n"
             elif file_name.endswith('.xlsx'):
                 df = pd.read_excel(file_name)
-                raw_text += df.to_string() + "\n"
-            raw_text += f"\n--- [출처: {file_name}] ---\n\n"
+                text += df.to_string() + "\n"
+            text += f"\n--- [문서: {file_name}] ---\n\n"
         except Exception:
             pass
+            
+    return text, files
 
-    if not raw_text.strip():
-        return None
-
-    # 1. 텍스트를 500글자 단위로 잘게 쪼갭니다.
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-    chunks = text_splitter.split_text(raw_text)
-    
-    # 2. 한국어에 특화된 무료 임베딩 모델로 조각들을 저장합니다.
-    embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
-    vector_db = FAISS.from_texts(chunks, embeddings)
-    
-    return vector_db
-
-with st.spinner("📚 문서를 조각내어 AI 도서관을 구축하고 있습니다... (최초 1회 약 1~2분 소요)"):
-    vector_db = build_vector_db()
+document_context, loaded_files = load_backend_documents()
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "도서관 구축 완료! 문서 내용에 대해 편하게 물어보세요."}]
+    st.session_state.messages = [{"role": "assistant", "content": "문서를 모두 외웠습니다! 이전 대화 흐름도 기억하고 있으니 편하게 질문해 주세요."}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -87,6 +67,12 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
     if model is None:
         st.stop()
         
+    # 💡 핵심: AI가 이전 문맥을 이해하도록 최근 4번의 대화 기록을 모아줍니다.
+    chat_history = ""
+    for msg in st.session_state.messages[-4:]:
+        role_name = "질문" if msg["role"] == "user" else "AI 답변"
+        chat_history += f"{role_name}: {msg['content']}\n"
+        
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -94,29 +80,28 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         
-        context = ""
-        # 💡 질문이 들어오면 도서관에서 가장 관련 있는 딱 3조각만 꺼내옵니다! (토큰 폭풍 절약)
-        if vector_db:
-            docs = vector_db.similarity_search(prompt, k=3)
-            context = "\n\n".join([f"[관련 조각 {i+1}]\n{d.page_content}" for i, d in enumerate(docs)])
-        
-        if context:
-            full_prompt = f"""너는 제공된 문서의 내용을 바탕으로 '핵심 기준'만 빠르고 정확하게 짚어주는 실무 전문 AI야. 
+        if document_context:
+            full_prompt = f"""너는 제공된 문서의 내용과 [이전 대화 기록]을 바탕으로 '핵심 기준'을 정확하게 짚어주는 실무 전문 AI야. 
 
 [절대 지켜야 할 출력 규칙]
-1. 💡 간결한 개조식 요약: 서론이나 장황한 줄글 설명은 생략하고, 핵심 내용만 글머리 기호(-, *)로 정리해.
-2. 🚨 조건 누락 절대 금지: 산출 기준, 적용 개소, 예외 조건 등은 단 하나도 생략하지 마라.
-3. 🧹 깔끔한 텍스트: HTML 태그 쓰지 말고 단위는 ㎡, ㎥ 등으로 정확히 표기해.
+1. 간결한 개조식 요약: 장황한 설명은 생략하고, 글머리 기호(-, *)로 깔끔하게 정리해.
+2. 조건 누락 절대 금지: 산출 기준, 적용 개소(예: 코어개소 적용), 예외 조건은 단 하나도 생략하지 마라.
+3. 🧹 깔끔한 텍스트: `<br>`, `TEXT` 같은 태그 쓰지 말고 단위는 ㎡, ㎥ 등으로 정확히 표기해.
+4. 문맥 유지: [이전 대화 기록]을 참고해서 사용자가 이어서 질문하면 자연스럽게 연결해서 답변해.
 
-[참고 문서 조각 (이 내용만 보고 답변해!)]
-{context}
+[이전 대화 기록]
+{chat_history}
 
-[질문]
+[참고 문서]
+{document_context}
+
+[새로운 질문]
 {prompt}"""
         else:
             full_prompt = prompt
 
         max_retries = 3 
+        import time
         for attempt in range(max_retries):
             try:
                 response = model.generate_content(full_prompt, stream=True)
