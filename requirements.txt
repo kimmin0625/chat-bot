@@ -1,11 +1,7 @@
+# 천재 모드 롤백
 streamlit
 google-generativeai
 pandas
 PyPDF2
 python-docx
 openpyxl
-langchain
-langchain-community
-langchain-text-splitters
-sentence-transformers
-faiss-cpu
