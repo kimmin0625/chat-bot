@@ -9,17 +9,21 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# API 키 설정
-MY_API_KEY = "AQ.Ab8RN6IUHc55e8IHtqbT9THp-d9ldt2M4A9oU9o3gI5ubrXlIQ"
+# 🚨 Streamlit 비밀 금고에서 API 키 불러오기 (절대 코드에 직접 쓰지 마세요!)
+try:
+    MY_API_KEY = st.secrets["MY_API_KEY"]
+except:
+    MY_API_KEY = None
+    st.error("비밀 금고(Secrets)에 API 키가 설정되지 않았습니다.")
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 나만의 초고속 지식 챗봇 (RAG 엔진 탑재)")
+st.title("🤖 SM그룹 실행예산 편성지침 요약 챗봇!")
 st.write("토큰 낭비 없이 핵심만 쏙쏙 뽑아 답변하는 스마트 엔진이 적용되었습니다!")
 
 if MY_API_KEY:
     try:
         genai.configure(api_key=MY_API_KEY)
-        model = genai.GenerativeModel('models/gemini-3.6-flash') # 사용하시던 모델 버전 유지
+        model = genai.GenerativeModel('gemini-3.6-flash') # 사용하시던 모델 버전 유지
     except Exception as e:
         model = None
         st.error(f"모델 연결 실패: {e}")
