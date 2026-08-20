@@ -10,7 +10,7 @@ import time
 MY_API_KEY = st.secrets["MY_API_KEY"]
 
 st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
-st.title("🤖 나만의 맞춤형 지식 챗봇 (천재 모드 + 기억력 탑재)")
+st.title("🤖 SM그룹 실행예산 편성지침 요약 챗봇")
 
 if MY_API_KEY:
     try:
