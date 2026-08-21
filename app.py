@@ -67,9 +67,9 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
     if model is None:
         st.stop()
         
-    # 💡 핵심: AI가 이전 문맥을 이해하도록 최근 4번의 대화 기록을 모아줍니다.
+    # 💡 핵심: AI가 이전 문맥을 이해하도록 최근 20번의 대화 기록을 모아줍니다.
     chat_history = ""
-    for msg in st.session_state.messages[-4:]:
+    for msg in st.session_state.messages[-20:]:
         role_name = "질문" if msg["role"] == "user" else "AI 답변"
         chat_history += f"{role_name}: {msg['content']}\n"
         
@@ -84,7 +84,7 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
             full_prompt = f"""너는 제공된 문서의 내용과 [이전 대화 기록]을 바탕으로 '핵심 기준'을 정확하게 짚어주는 실무 전문 AI야. 
 
 [절대 지켜야 할 출력 규칙]
-1. 간결한 개조식 요약: 장황한 설명은 생략하고, 글머리 기호(-, *)로 깔끔하게 정리해.
+1. 간결한 개조식 요약: 장황한 설명은 생략하고, 글머리 기호(-, *)로 깔끔하게  문서내용 누락없이 정리해.
 2. 조건 누락 절대 금지: 산출 기준, 적용 개소(예: 코어개소 적용), 예외 조건은 단 하나도 생략하지 마라.
 3. 🧹 깔끔한 텍스트: `<br>`, `TEXT` 같은 태그 쓰지 말고 단위는 ㎡, ㎥ 등으로 정확히 표기해.
 4. 문맥 유지: [이전 대화 기록]을 참고해서 사용자가 이어서 질문하면 자연스럽게 연결해서 답변해.
