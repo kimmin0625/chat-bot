@@ -119,10 +119,10 @@ if prompt := st.chat_input("챗봇에게 질문하세요..."):
             except Exception as e:
                 if "429" in str(e):
                     if attempt < max_retries - 1:
-                        placeholder.warning(f"⏳ 구글 단속에 걸렸습니다. {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
+                        placeholder.warning(f"⏳ 로딩중..... {20 * (attempt + 1)}초 후 자동으로 재시도합니다...")
                         time.sleep(20 * (attempt + 1)) 
                     else:
-                        placeholder.error("과속 단속이 너무 심합니다. 잠시 후 다시 질문해 주세요.")
+                        placeholder.error("질문이 너무많아요! 잠시 후 다시 질문해 주세요.")
                 else:
                     placeholder.error(f"오류가 발생했습니다: {e}")
                     break
