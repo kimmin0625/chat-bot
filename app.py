@@ -9,7 +9,7 @@ import time
 # 🚨 API 키 (새로 발급받은 키를 여기에 넣으세요)
 MY_API_KEY = st.secrets["MY_API_KEY"]
 
-st.set_page_config(page_title="맞춤형 AI 챗봇", layout="wide")
+st.set_page_config(page_title="실행예산팀 AI 챗봇", layout="wide")
 st.title("🤖 SM그룹 실행예산 편성지침 요약챗봇!")
 
 if MY_API_KEY:
